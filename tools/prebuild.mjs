@@ -1,72 +1,67 @@
-import { mkdirSync, writeFileSync, existsSync } from "fs";
-import { dirname } from "path";
+// tools/prebuild.mjs
+// ───────────────────────────────────────────────
+// ✅ 목적: 빌드 전 자동 교정(self-heal) 루프
+// 1) 필수 설정 파일(Next, Vercel, Package.json) 자동 점검
+// 2) HTML-only 구조 감지 → Next.js app router 구조로 교정
+// 3) 누락된 설정/폴더 자동 생성
+// 4) 로그 출력으로 디버그 용이
+// ───────────────────────────────────────────────
 
-// 안전하게 폴더/파일 만들기
-function ensureFile(filePath, content) {
-  const dir = dirname(filePath);
-  mkdirSync(dir, { recursive: true });
-  if (!existsSync(filePath)) {
-    writeFileSync(filePath, content, "utf8");
-    console.log("[prebuild] created:", filePath);
+import fs from "fs";
+import path from "path";
+
+// 점검 대상 파일
+const essentialFiles = ["next.config.js", "vercel.json", "package.json"];
+
+// ✅ 1. 필수 파일 존재 확인 및 자동 생성
+essentialFiles.forEach(file => {
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, "{}", "utf-8");
+    console.log(`🆕 Created missing file: ${file}`);
   }
+});
+
+// ✅ 2. package.json 보정: HTML-only → Next.js app router
+const pkgPath = path.resolve("package.json");
+const pkgData = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+
+pkgData.scripts = pkgData.scripts || {};
+pkgData.scripts.build = "next build";
+pkgData.scripts.dev = "next dev";
+pkgData.scripts.start = "next start";
+
+pkgData.dependencies = pkgData.dependencies || {};
+pkgData.dependencies.next = pkgData.dependencies.next || "14.2.12";
+pkgData.dependencies.react = pkgData.dependencies.react || "18.3.1";
+pkgData.dependencies["react-dom"] = pkgData.dependencies["react-dom"] || "18.3.1";
+
+fs.writeFileSync(pkgPath, JSON.stringify(pkgData, null, 2), "utf-8");
+console.log("🧩 package.json updated successfully");
+
+// ✅ 3. vercel.json 보정: 빌드 명령 자동화 삽입
+const vercelPath = path.resolve("vercel.json");
+let vercelConfig = {};
+
+try {
+  vercelConfig = JSON.parse(fs.readFileSync(vercelPath, "utf-8"));
+} catch {
+  vercelConfig = {};
 }
 
-// app/layout.tsx 자동 생성
-ensureFile(
-  "app/layout.tsx",
-  `export const metadata = { title: "wic-auto-tools-2025", description: "Auto layout" };
+vercelConfig.buildCommand = "node tools/prebuild.mjs && npm run build";
+vercelConfig.installCommand = "npm install";
+vercelConfig.framework = "nextjs";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="ko">
-      <body style={{ fontFamily: "system-ui, Apple SD Gothic Neo, Segoe UI, sans-serif" }}>
-        {children}
-      </body>
-    </html>
-  );
+fs.writeFileSync(vercelPath, JSON.stringify(vercelConfig, null, 2), "utf-8");
+console.log("🔧 vercel.json updated successfully");
+
+// ✅ 4. app 디렉터리 자동 생성 (Next.js App Router 구조)
+const appDir = path.resolve("app");
+if (!fs.existsSync(appDir)) {
+  fs.mkdirSync(appDir);
+  fs.writeFileSync(path.join(appDir, "page.tsx"), "export default function Page(){return <h1>WIC Auto Tools v0</h1>}", "utf-8");
+  console.log("📁 Created Next.js app router base structure");
 }
-`
-);
 
-// app/page.tsx 자동 생성
-ensureFile(
-  "app/page.tsx",
-  `export default function Page() {
-  return (
-    <main style={{ padding: 20 }}>
-      <h1>wic-auto-tools-2025</h1>
-      <p>자동 프리빌드가 동작했습니다. (app/layout.tsx / app/page.tsx)</p>
-    </main>
-  );
-}
-`
-);
-
-// tsconfig.json 자동 생성
-ensureFile(
-  "tsconfig.json",
-  `{
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM"],
-    "jsx": "preserve",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "baseUrl": "."
-  },
-  "include": ["."]
-}
-`
-);
-
-// next.config.mjs 자동 생성
-ensureFile(
-  "next.config.mjs",
-  `/** @type {import('next').NextConfig} */
-const nextConfig = { experimental: { typedRoutes: false } };
-export default nextConfig;
-`
-);
-
-console.log("[prebuild] ensured: layout.tsx, page.tsx, tsconfig.json, next.config.mjs");
+// ✅ 5. 완료 로그
+console.log("✅ Prebuild self-heal process completed successfully.");
