@@ -1,20 +1,20 @@
 // app/api/tools/[group]/[key]/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
-type Params = { params: { group: string; key: string } };
-
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(
+  req: Request,
+  { params }: { params: { group: string; key: string } }
+) {
   const { group, key } = params;
 
-  if (key === 'scrape') {
-    // 🔧 절대별칭(@/..) 금지 — 루트의 lib/scraping.ts로 5단계 위로 올라감
-    const { scrapeData } = await import('../../../../../lib/scraping');
-    const data = await scrapeData();
-    return NextResponse.json({ ok: true, group, key, data });
+  // ⚠️ 별칭(@) 금지. 상대경로 5단계 업으로 lib/scraping 가져오기
+  const { scrapeData } = await import("../../../../../lib/scraping");
+
+  let data: any = null;
+
+  if (group === "demo" && key === "scrape") {
+    data = await scrapeData();
   }
 
-  return NextResponse.json(
-    { ok: false, error: 'unknown key', group, key },
-    { status: 400 }
-  );
+  return NextResponse.json({ ok: true, group, key, data });
 }
