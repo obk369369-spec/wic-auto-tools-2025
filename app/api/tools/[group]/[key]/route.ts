@@ -1,17 +1,14 @@
 // app/api/tools/[group]/[key]/route.ts
 import { NextResponse } from "next/server";
+import { scrapeData } from "../../_bridge/scraping"; // ✅ 깊은 경로 금지
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: { group: string; key: string } }
 ) {
   const { group, key } = params;
 
-  // ⚠️ 별칭(@) 금지. 상대경로 5단계 업으로 lib/scraping 가져오기
-  const { scrapeData } = await import("../../../../../lib/scraping");
-
-  let data: any = null;
-
+  let data: unknown = null;
   if (group === "demo" && key === "scrape") {
     data = await scrapeData();
   }
