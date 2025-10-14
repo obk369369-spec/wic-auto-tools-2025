@@ -1,21 +1,16 @@
 {
-  "name": "wic-auto-tools",
+  "name": "wic-auto-tools-2025",
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "node tools/prebuild.mjs",
     "dev": "next dev",
-    "build": "npm run prebuild && next build",
-    "start": "next start"
+    "build": "next build",
+    "start": "next start",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
-    "@upstash/redis": "^1.30.0",
-    "cheerio": "^1.0.0-rc.12",
     "next": "14.2.12",
     "react": "18.3.1",
     "react-dom": "18.3.1"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.3"
   }
 }
