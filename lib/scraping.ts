@@ -1,4 +1,5 @@
-// 임시 안전용 더미 함수 (Cloudflare 빌드 통과용)
+// lib/scraping.ts
 export async function scrapeData() {
-  return { ok: true, note: "placeholder function for scraping" };
+  // Cloudflare 환경 호환되는 더미 구현(네트워크 호출 없이 통과용)
+  return { note: 'placeholder function for scraping' };
 }
