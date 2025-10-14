@@ -7,8 +7,8 @@ export async function GET(_req: Request, { params }: Params) {
   const { group, key } = params;
 
   if (key === 'scrape') {
-    // 별칭(@lib) 없이 상대경로로 로드
-    const { scrapeData } = await import('../../../../lib/scraping');
+    // 🔧 절대별칭(@/..) 금지 — 루트의 lib/scraping.ts로 5단계 위로 올라감
+    const { scrapeData } = await import('../../../../../lib/scraping');
     const data = await scrapeData();
     return NextResponse.json({ ok: true, group, key, data });
   }
