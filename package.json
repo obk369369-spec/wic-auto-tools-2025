@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "node tools/prebuild.mjs",
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "vercel-build": "node tools/prebuild.mjs && next build"
+    "build": "npm run prebuild && next build",
+    "start": "next start"
   },
   "dependencies": {
     "@upstash/redis": "^1.30.0",
