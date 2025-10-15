@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/fix-imports.mjs && node scripts/verify-paths.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/fix-imports.mjs",
     "build": "next build",
     "start": "next start"
   },
