@@ -1,10 +1,6 @@
 export async function GET() {
   return new Response(
-    JSON.stringify({ ok: true, status: "healthy" }),
-    {
-      headers: {
-        "content-type": "application/json",
-      },
-    }
+    JSON.stringify({ status: "ok", time: new Date().toISOString() }),
+    { headers: { "Content-Type": "application/json" }, status: 200 }
   );
 }
