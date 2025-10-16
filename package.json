@@ -1,16 +1,7 @@
 {
-  "name": "wic-auto-tools-2025",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "next dev",
-    "prebuild": "node scripts/fix-imports.mjs",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "next": "14.2.12",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/react": "^18.3.3",
+    "@types/node": "^20.12.7"
   }
 }
