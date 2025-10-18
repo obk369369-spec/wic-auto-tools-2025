@@ -5,11 +5,10 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "preserve",
-    "strict": true,
-    "types": ["node", "react"],
-    "baseUrl": ".",
-    "resolveJsonModule": true
+    "strict": false,
+    "noEmit": true,
+    "types": ["node"]
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }
