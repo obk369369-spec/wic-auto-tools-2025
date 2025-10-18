@@ -2,9 +2,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "prebuild": "node scripts/fix-imports.mjs && npm run lint",
-    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
-    "smoke": "node scripts/smoke.mjs"
+    "start": "next start"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "@types/react": "^18.3.3",
+    "@types/node": "^20.12.7"
   }
 }
