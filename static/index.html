@@ -1,65 +1,16 @@
 <!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>WIC TOC Normalizer (Deno)</title>
-  <style>
-    body{font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 960px; margin: 40px auto; padding: 0 16px;}
-    textarea,input,button{font-size:16px}
-    textarea{width:100%;height:220px;padding:12px}
-    pre{white-space:pre-wrap;background:#0b0b0b;color:#e8e8e8;padding:12px;border-radius:8px}
-    .row{display:grid;gap:10px}
-    @media(min-width:900px){.row{grid-template-columns:1fr 1fr}}
-  </style>
-</head>
-<body>
-  <h1>WIC TOC Normalizer (상/하위 2단계, 번호 보존)</h1>
-
-  <div class="row">
-    <div>
-      <h3>입력</h3>
-      <textarea id="in" placeholder="발행사 원문 목차를 붙여넣기"></textarea>
-      <button id="run">정규화 실행</button>
-      <button id="sample">샘플 입력</button>
-    </div>
-    <div>
-      <h3>출력</h3>
-      <pre id="out"></pre>
-      <small><a href="/health" target="_blank">/health</a> 상태 확인</small>
-    </div>
-  </div>
-
-  <script>
-  const $ = (s)=>document.querySelector(s);
-  $("#sample").onclick = ()=>{
-    $("#in").value = [
-      "1. Market Overview",
-      "1.1 Demand drivers & restraints",
-      "1.2 Regulatory snapshot",
-      "1.3 Segmentation",
-      "1.3.1 By Component",
-      "1.3.2 By Application",
-      "1.3.3 Industrial",
-      "1.3.4 Automotive",
-      "2. Competitive Landscape",
-      "3. Key Players",
-      "3.1 Company Profiles",
-      "4. Methodology",
-      "4.1 Scope & Definitions",
-      "4.2 Data Sources",
-    ].join("\n");
-  };
-  $("#run").onclick = async ()=>{
-    const text = $("#in").value;
-    const r = await fetch("/api/toc/normalize", {
-      method: "POST",
-      headers: {"content-type": "application/json"},
-      body: JSON.stringify({ text })
-    });
-    const j = await r.json();
-    $("#out").textContent = j.ok ? j.output : ("ERROR: "+(j.error||""));
-  };
-  </script>
-</body>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WIC Tools (Deno)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body>
+    <h1>WIC Tools (Deno Minimal)</h1>
+    <ul>
+      <li><a href="/health">/health</a></li>
+      <li><a href="/toc">/toc</a></li>
+      <li><a href="/evidence?link=https://example.com/log">/evidence</a></li>
+    </ul>
+  </body>
 </html>
