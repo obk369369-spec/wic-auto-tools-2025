@@ -1,59 +1,52 @@
-// Deno 표준 HTTP 서버만 사용 (알리아스/외부패키지 없음)
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { normalizeTOC } from "./lib/toc.ts";
+// Deno Deploy/CLI 공통 동작. 별칭/번들/웹팩 전혀 없음.
+import { buildV0Toc } from "./lib/toc.ts";
 
-const encoder = new TextEncoder();
+const enc = new TextEncoder();
+const mime: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js":   "text/javascript; charset=utf-8",
+  ".css":  "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".txt":  "text/plain; charset=utf-8",
+};
 
-// 간단한 응답 유틸
-function json(resp: unknown, status = 200) {
-  return new Response(JSON.stringify(resp), {
-    status,
+function json(data: unknown, init: ResponseInit = {}) {
+  return new Response(JSON.stringify(data), {
     headers: { "content-type": "application/json; charset=utf-8" },
+    ...init,
   });
 }
 
-async function serveIndex(): Promise<Response> {
+async function serveStatic(urlPath: string) {
+  // / → /index.html
+  const path = urlPath === "/" ? "/index.html" : urlPath;
   try {
-    const url = new URL("./static/index.html", import.meta.url);
-    const html = await Deno.readTextFile(url);
-    return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
+    const file = await Deno.readFile(`./static${path}`);
+    const ext = path.substring(path.lastIndexOf("."));
+    return new Response(file, { headers: { "content-type": mime[ext] ?? "application/octet-stream" } });
   } catch {
-    // 실패 시 최소 페이지
-    return new Response("<h1>WIC Deno Tools</h1>", {
-      headers: { "content-type": "text/html; charset=utf-8" },
-    });
+    return new Response(enc.encode("Not Found"), { status: 404 });
   }
 }
 
-async function handler(req: Request): Promise<Response> {
-  const { pathname } = new URL(req.url);
+Deno.serve(async (req) => {
+  const { pathname, searchParams } = new URL(req.url);
 
-  // 헬스체크
-  if (req.method === "GET" && pathname === "/health") {
-    return json({ ok: true, service: "wic-deno-tools", timestamp: new Date().toISOString() });
+  if (pathname === "/health") {
+    return json({ ok: true, status: "healthy", ts: new Date().toISOString() });
   }
 
-  // TOC 정규화 (상위/하위 2단계 유지, 번호 보존)
-  if (req.method === "POST" && pathname === "/api/toc/normalize") {
-    try {
-      const body = await req.json().catch(() => ({}));
-      const text = typeof body?.text === "string" ? body.text : "";
-      if (!text.trim()) return json({ ok: false, error: "MISSING_TEXT" }, 400);
-      const output = normalizeTOC(text);
-      return json({ ok: true, output });
-    } catch (e) {
-      return json({ ok: false, error: String(e?.message || e) }, 500);
-    }
+  if (pathname === "/toc") {
+    const toc = buildV0Toc();
+    return json({ ok: true, toc });
   }
 
-  // 루트: 테스트 UI
-  if (req.method === "GET" && (pathname === "/" || pathname === "/index.html")) {
-    return await serveIndex();
+  // 예: 쿼리로 증거 파일 링크를 수집(로그 포맷만 제공)
+  if (pathname === "/evidence") {
+    const link = searchParams.get("link") ?? "";
+    return json({ ok: true, received: !!link, link });
   }
 
-  // 그 외 404
-  return json({ ok: false, error: "NOT_FOUND" }, 404);
-}
-
-console.log("WIC Deno Tools listening on :8000");
-serve(handler, { port: 8000 });
+  // 그 외 정적 파일
+  return serveStatic(pathname);
+});
