@@ -1,24 +1,19 @@
-console.log("[REPORT] loop running");
-
-const base = "https://wic-auto-tools-2025.obk369369-spec.deno.net";
-
-async function reportTick() {
-  console.log("[REPORT] tick start");
+// =====================
+// HOURLY REPORT MODULE
+// =====================
+export async function reportTick() {
+  console.log("[REPORT] start hourly check");
   try {
-    await fetch(`${base}/ops?action=status`)
-      .then((r) => r.json())
-      .then((j) => console.log("[REPORT] group status", j));
-  } catch {
-    console.log("[REPORT] group status check failed");
-  }
-  console.log("[REPORT] tick end");
-}
-
-async function loop() {
-  while (true) {
-    await reportTick();
-    await new Promise((r) => setTimeout(r, 3600_000)); // 1시간마다
+    const base =
+      Deno.env.get("REPORT_BASE_URL") ??
+      "https://wic-auto-tools-2025.obk369369-spec.deno.net";
+    const url = (base.endsWith("/") ? base.slice(0, -1) : base) + "/health";
+    const res = await fetch(url);
+    const json = await res.json().catch(() => ({ status: "error" }));
+    console.log(
+      `[REPORT] ${new Date().toISOString()} status=${json.status ?? "unknown"}`
+    );
+  } catch (e) {
+    console.error("[REPORT] error:", e);
   }
 }
-
-loop();
