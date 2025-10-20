@@ -1,27 +1,18 @@
-// ===============================
-// MAIN ENTRY (single-entry point)
-// ===============================
-import { autoRecover } from "./auto_recover.ts";
-import { watchDog } from "./client_watchdog.ts";
-import { syncData } from "./data_sync.ts";
-import { reportTick } from "./hourly_report.ts";
-
-console.log("[MAIN] WIC Auto Tools 2025 running...");
-
-// 단일 서버 (Deno Deploy용)
-Deno.serve((_req) =>
-  new Response(
-    JSON.stringify({
-      status: "ok",
-      service: "wic-auto-tools-2025",
-      time: new Date().toISOString(),
-    }),
-    { headers: { "Content-Type": "application/json" } },
-  )
-);
-
-// 백그라운드 루프 시작
-setInterval(autoRecover, 60_000);
-setInterval(watchDog, 90_000);
-setInterval(syncData, 300_000);
-setInterval(reportTick, 3600_000);
+// ↓ 기존 Deno.serve 핸들러 안에 라우팅만 추가
+if (pathname === "/ops" && url.searchParams.get("action") === "links") {
+  const base = "https://wic-auto-tools-2025.obk369369-spec.deno.net";
+  const deno = "https://console.deno.com/obk369369-spec/wic-auto-tools-2025";
+  const links = {
+    HEALTH: { url: `${base}/health`, menu: "Preview URL → /health" },
+    EVIDENCE:{ url: `${base}/evidence`, menu: "Preview URL → /evidence" },
+    STATUS:  { url: `${base}/ops?action=status`, menu: "Custom Ops → status" },
+    AUTO:    { url: `${deno}/observability/logs?search=%5BAUTO%5D`, menu: "Console → Logs → 검색: [AUTO]" },
+    REPORT:  { url: `${deno}/observability/logs?search=%5BREPORT%5D`, menu: "Console → Logs → 검색: [REPORT]" },
+    SYNC:    { url: `${deno}/observability/logs?search=%5BSYNC%5D`, menu: "Console → Logs → 검색: [SYNC]" },
+    DOG:     { url: `${deno}/observability/logs?search=%5BDOG%5D`, menu: "Console → Logs → 검색: [DOG]" },
+    RECOVER: { url: `${deno}/observability/logs?search=%5BRECOVER%5D`, menu: "Console → Logs → 검색: [RECOVER]" },
+    BUILDS:  { url: deno, menu: "Overview → Recent Production Builds" },
+  };
+  return new Response(JSON.stringify({ ok:true, links }, null, 2),
+    { headers: { "content-type":"application/json; charset=utf-8" } });
+}
