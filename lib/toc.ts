@@ -1,13 +1,12 @@
 // lib/toc.ts
-// 최소 동작 버전: /toc 응답용
+export type TocItem = { id: string; title: string };
 
-export async function buildTOC() {
-  return {
-    ok: true,
-    generatedAt: new Date().toISOString(),
-    items: [], // 필요 시 여기에 파일/모듈 목록을 채우면 됨
-  };
+// 반드시 "export function buildTOC" 형태로 내보내야 함
+export async function buildTOC(): Promise<TocItem[]> {
+  // TODO: 실제 구현 연결. 지금은 동작 확인용 더미 데이터
+  return [
+    { id: "auto",   title: "AUTO tools"   },
+    { id: "report", title: "REPORT tools" },
+    { id: "sync",   title: "SYNC tools"   },
+  ];
 }
-
-// (선택) default export도 제공해두면 호환 좋음
-export default buildTOC;
