@@ -1,24 +1,13 @@
-import publishers from "./publishers_300.ts";
+// lib/toc.ts
+// 최소 동작 버전: /toc 응답용
 
-export type TocItem = {
-  id: string;
-  title: string;
-  group: "v0" | "core" | "ext";
-  link?: string;
-};
-
-export function buildV0Toc(): { items: TocItem[]; stats: any } {
-  // v0 TOC 최소 셋: 헬스체크/증거로그/다음스텝
-  const items: TocItem[] = [
-    { id: "health", title: "Health Check", group: "v0", link: "/health" },
-    { id: "evidence", title: "Evidence Logs", group: "v0", link: "/evidence" },
-    { id: "next", title: "Next Small Step", group: "v0" },
-  ];
+export async function buildTOC() {
   return {
-    items,
-    stats: {
-      publishers: publishers.length,
-      modules: items.length,
-    },
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    items: [], // 필요 시 여기에 파일/모듈 목록을 채우면 됨
   };
 }
+
+// (선택) default export도 제공해두면 호환 좋음
+export default buildTOC;
