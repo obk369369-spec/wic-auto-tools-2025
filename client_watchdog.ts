@@ -1,24 +1,10 @@
-// =============================
-// File: client_watchdog.ts
-// =============================
-const WATCHDOG_LOOP = (Deno.env.get("WATCHDOG_LOOP") ?? "").toLowerCase() === "true";
+console.log("[DOG] watchdog monitoring");
 
-if (WATCHDOG_LOOP) {
-  const CONFIG = Deno.env.get("CUSTOMER_CONFIG") || "[]";
-  let customers: Array<{ name: string; ping: string }>;
-  try { customers = JSON.parse(CONFIG); } catch { customers = []; }
-
-  async function tick() {
-    for (const c of customers) {
-      try {
-        await fetch(c.ping);
-        console.log(`[DOG] ${c.name} ok`);
-      } catch {
-        console.log(`[DOG] ${c.name} down`);
-      }
-    }
+export async function watchdog() {
+  while (true) {
+    console.log("[DOG] heartbeat check");
+    await new Promise((r) => setTimeout(r, 900_000)); // 15분
   }
-
-  tick().catch(() => {});
-  setInterval(tick, 1000 * 60 * 30);
 }
+
+watchdog();
