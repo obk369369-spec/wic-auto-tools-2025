@@ -1,57 +1,61 @@
 // =============================
-// File: hourly_report.ts (Status-aware Version)
+// File: hourly_report.ts (도구별 진행/ETA + 공개 Source 링크 포함)
 // =============================
 import { registerTick, setProgress } from "./ops_status.ts";
 
 const REPORT_LOOP = (Deno.env.get("REPORT_LOOP") ?? "").toLowerCase() === "true";
 const EVERY_MS = Number(Deno.env.get("REPORT_MS") ?? 1000 * 60 * 60); // 1h
 
-if (REPORT_LOOP) {
-  console.log(`[REPORT] loop enabled — interval=${EVERY_MS / 1000}s`);
+async function reportOnce() {
+  try {
+    setProgress("REPORT", 10, "collecting");
+    const base = (Deno.env.get("REPORT_BASE_URL") ?? "https://wic-auto-tools-2025.obk369369-spec.deno.net").replace(/\/$/,"");
 
-  async function reportTick() {
-    try {
-      setProgress("REPORT", 10, "fetching");
-      const base = Deno.env.get("REPORT_BASE_URL") ?? "https://wic-auto-tools-2025.obk369369-spec.deno.net";
-      const clean = base.endsWith("/") ? base.slice(0, -1) : base;
+    const [health, evidence, status, eta, links] = await Promise.all([
+      fetch(`${base}/health`).then(r=>r.json()).catch(()=>({status:"error"})),
+      fetch(`${base}/evidence`).then(r=>r.json()).catch(()=>({})),
+      fetch(`${base}/ops?action=status`).then(r=>r.json()).catch(()=>null),
+      fetch(`${base}/ops?action=eta`).then(r=>r.json()).catch(()=>null),
+      fetch(`${base}/ops?action=links`).then(r=>r.json()).catch(()=>({links:{}})),
+    ]);
 
-      const health = await fetch(`${clean}/health`).then((r) => r.json());
-      setProgress("REPORT", 60, "health ok");
+    setProgress("REPORT", 70, "assembling");
 
-      const links = await fetch(`${clean}/ops?action=links`).then((r) => r.json()).catch(() => ({ links: {} }));
-      const status = await fetch(`${clean}/ops?action=status`).then((r) => r.json()).catch(() => null);
+    // 도구별 진행 요약
+    const tools: Array<"AUTO"|"REPORT"|"SYNC"|"DOG"|"RECOVER"> = ["AUTO","REPORT","SYNC","DOG","RECOVER"];
+    const perTool = (status?.snapshot?.items ?? []).filter((x: any)=>tools.includes(x.name));
 
-      setProgress("REPORT", 90, "assemble");
+    // 콘솔 출력(머신-리더블)
+    console.log("[REPORT]", JSON.stringify({
+      ts: new Date().toISOString(),
+      health: { status: health.status, region: health.region ?? null, startedAt: health.startedAt ?? null },
+      evidence: { uptimeSec: evidence.uptimeSec ?? null, commit: evidence.commit ?? null, branch: evidence.branch ?? null },
+      perTool,
+      groupETA: eta?.groupETA ?? null,
+      links: links?.links ?? {},
+      source: {
+        health: "Endpoint: /health",
+        evidence: "Endpoint: /evidence",
+        status: "Endpoint: /ops?action=status",
+        eta: "Endpoint: /ops?action=eta"
+      }
+    }));
 
-      console.log(
-        "[REPORT]",
-        JSON.stringify(
-          {
-            ts: new Date().toISOString(),
-            health: {
-              status: health.status,
-              region: health.region ?? "-",
-              uptime: health.startedAt ? `${Math.floor((Date.now() - Date.parse(health.startedAt)) / 1000)}s` : "-",
-            },
-            links: links?.links ?? {},
-            snapshot: status?.snapshot ?? null,
-          },
-          null,
-          0,
-        ),
-      );
-
-      registerTick("REPORT", { progress: 100, ok: true, note: "hourly report ok" });
-      setTimeout(() => setProgress("REPORT", 0, "idle"), 2000); // 다음 주기 대기 표기
-    } catch (e) {
-      registerTick("REPORT", { ok: false, note: `error: ${String(e)}` });
-      console.log("[REPORT] error:", e);
-    }
+    registerTick("REPORT", { progress: 100, ok: true, note: "hourly report ok" });
+    setTimeout(()=> setProgress("REPORT", 0, "idle"), 500);
+  } catch (e) {
+    registerTick("REPORT", { ok: false, note: `error: ${String(e)}` });
+    console.log("[REPORT] error:", e);
   }
+}
 
-  // 즉시 실행 + 주기
-  reportTick();
-  setInterval(reportTick, EVERY_MS);
+if (REPORT_LOOP) {
+  console.log(`[REPORT] loop enabled — interval=${EVERY_MS/1000}s`);
+  reportOnce();
+  setInterval(reportOnce, EVERY_MS);
 } else {
   console.log("[REPORT] REPORT_LOOP=false → skip hourly report loop");
 }
+
+// 외부에서 on-demand 호출용 (선택)
+export const reportTick = reportOnce;
