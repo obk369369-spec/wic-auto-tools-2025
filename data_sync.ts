@@ -1,9 +1,12 @@
-console.log("[SYNC] data sync active");
-
+// =====================
+// DATA SYNC MODULE
+// =====================
 export async function syncData() {
-  console.log("[SYNC] syncing data...");
-  await new Promise((r) => setTimeout(r, 5000));
-  console.log("[SYNC] done");
+  console.log("[SYNC] data sync active");
+  try {
+    await new Promise((r) => setTimeout(r, 5000));
+    console.log("[SYNC] done");
+  } catch (e) {
+    console.log("[SYNC] error:", e);
+  }
 }
-
-syncData();
