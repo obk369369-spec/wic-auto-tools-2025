@@ -1,23 +1,27 @@
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+// ===============================
+// MAIN ENTRY (single-entry point)
+// ===============================
+import { autoRecover } from "./auto_recover.ts";
+import { watchDog } from "./client_watchdog.ts";
+import { syncData } from "./data_sync.ts";
+import { reportTick } from "./hourly_report.ts";
 
-serve(async (req) => {
-  const url = new URL(req.url);
+console.log("[MAIN] WIC Auto Tools 2025 running...");
 
-  // ───────────────────────────────
-  // ops/status route
-  if (url.pathname === "/ops" && url.searchParams.get("action") === "status") {
-    const summary = {
-      AUTO: "auto_loop.ts 정상 작동",
-      REPORT: "hourly_report.ts 루프 진행 중",
-      SYNC: "data_sync.ts 데이터 최신",
-      DOG: "client_watchdog.ts 하트비트 정상",
-      RECOVER: "auto_recover.ts 대기 중",
-    };
-    return new Response(JSON.stringify(summary, null, 2), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  // ───────────────────────────────
+// 단일 서버 (Deno Deploy용)
+Deno.serve((_req) =>
+  new Response(
+    JSON.stringify({
+      status: "ok",
+      service: "wic-auto-tools-2025",
+      time: new Date().toISOString(),
+    }),
+    { headers: { "Content-Type": "application/json" } },
+  )
+);
 
-  return new Response("WIC-AutoTools-2025 Core Running");
-});
+// 백그라운드 루프 시작
+setInterval(autoRecover, 60_000);
+setInterval(watchDog, 90_000);
+setInterval(syncData, 300_000);
+setInterval(reportTick, 3600_000);
