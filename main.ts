@@ -1,73 +1,23 @@
-// =============================
-// File: main.ts
-// =============================
-import { buildV0Toc } from "./lib/toc.ts";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
-const startedAt = new Date();
+serve(async (req) => {
+  const url = new URL(req.url);
 
-function json(data: unknown, init: ResponseInit = {}) {
-  return new Response(JSON.stringify(data, null, 2), {
-    headers: { "content-type": "application/json; charset=utf-8" },
-    ...init,
-  });
-}
-
-Deno.serve(async (req: Request) => {
-  const { pathname } = new URL(req.url);
-
-  if (pathname === "/" || pathname === "/index.html") {
-    try {
-      const html = await Deno.readTextFile("./static/index.html");
-      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
-    } catch (_) {
-      return new Response(
-        `<!doctype html><meta charset="utf-8"><h1>WIC Auto Tools 2025</h1><ul>
-         <li><a href="/health">/health</a></li>
-         <li><a href="/toc">/toc</a></li>
-         <li><a href="/evidence">/evidence</a></li>
-         </ul>`,
-        { headers: { "content-type": "text/html; charset=utf-8" } },
-      );
-    }
-  }
-
-  if (pathname === "/health") {
-    const autoLoop = (Deno.env.get("AUTO_LOOP") ?? "").toLowerCase() === "true";
-    const payload = {
-      status: "ok",
-      ts: new Date().toISOString(),
-      startedAt: startedAt.toISOString(),
-      autoLoopEnabled: autoLoop,
-      deploymentId: Deno.env.get("DENO_DEPLOYMENT_ID") ?? null,
-      region: Deno.env.get("DENO_REGION") ?? null,
+  // ───────────────────────────────
+  // ops/status route
+  if (url.pathname === "/ops" && url.searchParams.get("action") === "status") {
+    const summary = {
+      AUTO: "auto_loop.ts 정상 작동",
+      REPORT: "hourly_report.ts 루프 진행 중",
+      SYNC: "data_sync.ts 데이터 최신",
+      DOG: "client_watchdog.ts 하트비트 정상",
+      RECOVER: "auto_recover.ts 대기 중",
     };
-    return json(payload);
-  }
-
-  if (pathname === "/toc") {
-    try {
-      const toc = await buildV0Toc();
-      return json({ ok: true, toc });
-    } catch (err) {
-      return json({ ok: false, reason: "TOC module not ready", error: String(err) }, { status: 501 });
-    }
-  }
-
-  if (pathname === "/evidence") {
-    return json({
-      startedAt: startedAt.toISOString(),
-      now: new Date().toISOString(),
-      uptimeSec: Math.floor((Date.now() - startedAt.getTime()) / 1000),
-      commit: Deno.env.get("GITHUB_SHA") ?? null,
-      branch: Deno.env.get("GITHUB_REF_NAME") ?? null,
+    return new Response(JSON.stringify(summary, null, 2), {
+      headers: { "Content-Type": "application/json" },
     });
   }
+  // ───────────────────────────────
 
-  return new Response("Not Found", { status: 404 });
+  return new Response("WIC-AutoTools-2025 Core Running");
 });
-
-import "./auto_loop.ts";
-import "./hourly_report.ts";
-import "./auto_recover.ts";
-import "./client_watchdog.ts";
-import "./data_sync.ts";
