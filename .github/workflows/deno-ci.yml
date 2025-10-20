@@ -1,13 +1,25 @@
-# .github/workflows/deno-ci.yml  ← [신규 추가]
 name: deno-ci
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+
 jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with: { deno-version: v1.x }
-      - run: deno fmt --check
-      - run: deno lint
-      - run: deno check main.ts
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Format check
+        run: deno fmt --check
+
+      - name: Lint
+        run: deno lint
+
+      - name: Type check
+        run: deno check main.ts
