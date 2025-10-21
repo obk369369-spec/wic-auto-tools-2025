@@ -1,54 +1,63 @@
 // =====================================
-// File: ops.ts  (ADD/REPLACE)
-// 역할: 진행률 저장 + /ops/* 엔드포인트
+// File: ops.ts (FINAL ALL-IN-ONE)
 // =====================================
+type Prog = { percent: number; note?: string; ts: number };
+type Log = { ts: number; group: string; lvl: "INFO"|"WARN"|"ERROR"; msg: string; meta?: Record<string, unknown> };
 
-type Prog = { percent: number; note: string; ts: number };
 const progress = new Map<string, Prog>();
-let nextRun: Record<string, string> = {}; // NAME -> ISO time
+const nextRun: Record<string, string> = {};     // NAME -> ISO datetime
+const logs: Log[] = [];                          // recent ring buffer
+const metrics = new Map<string, { slow: number; error: number }>(); // group counters
 
-export function setProgress(group: string, percent: number, note = "") {
+export function setProgress(group: string, percent: number, note = ""): void {
   progress.set(group.toUpperCase(), { percent, note, ts: Date.now() });
 }
-
-export function registerTick(name: string, afterSec: number) {
-  const t = new Date(Date.now() + afterSec * 1000).toISOString();
-  nextRun[name.toUpperCase()] = t;
+export function registerTick(name: string, afterSec: number): void {
+  nextRun[name.toUpperCase()] = new Date(Date.now() + afterSec * 1000).toISOString();
+}
+export function log(group: string, lvl: Log["lvl"], msg: string, meta: Record<string, unknown> = {}): void {
+  const g = group.toUpperCase();
+  logs.push({ ts: Date.now(), group: g, lvl, msg, meta });
+  if (logs.length > 500) logs.shift();
+  const m = metrics.get(g) ?? { slow: 0, error: 0 };
+  if (lvl === "ERROR") m.error++;
+  if (typeof meta.durationMs === "number" && meta.durationMs > 2000) m.slow++;
+  metrics.set(g, m);
 }
 
-// 내부: 스냅샷
-function snapshotProgress() {
+function snapProgress() {
   const obj: Record<string, Prog> = {};
   for (const [k, v] of progress.entries()) obj[k] = v;
   return obj;
 }
-
-// 내부: 그룹 ETA(단순 평균)
-function groupETA() {
-  const now = Date.now();
-  const items = Object.keys(nextRun).map((k) => {
-    const due = Date.parse(nextRun[k]);
-    const etaSec = Math.max(0, Math.floor((due - now) / 1000));
-    const p = progress.get(k) ?? { percent: 0, note: "", ts: now };
-    return { group: k, etaSec, progress: p.percent };
+function snapMetrics() {
+  const out: Record<string, { slow: number; error: number }> = {};
+  metrics.forEach((v, k) => (out[k] = v));
+  return out;
+}
+function getLogs(group?: string) {
+  const g = group?.toUpperCase();
+  return logs.filter(l => !g || l.group === g).slice(-100);
+}
+function json(v: unknown, init: ResponseInit = {}): Response {
+  return new Response(JSON.stringify(v), {
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+    },
+    ...init,
   });
-
-  // 그룹 키 그대로 리턴(요약용)
-  return items;
 }
 
-// =====================================
-// HTTP 핸들러 (main.ts 에서 import)
-// =====================================
+// HTTP handler (main.ts → if (pathname.startsWith("/ops/")) return handleOps(req);)
 export async function handleOps(req: Request): Promise<Response> {
-  const { pathname } = new URL(req.url);
+  const { pathname, searchParams } = new URL(req.url);
 
-  if (pathname === "/ops/progress") {
-    return Response.json({ ok: true, progress: snapshotProgress() });
-  }
-  if (pathname === "/ops/eta") {
-    return Response.json({ ok: true, nextRun, eta: groupETA(), now: new Date().toISOString() });
-  }
+  if (pathname === "/ops/progress") return json({ ok: true, progress: snapProgress() });
+  if (pathname === "/ops/eta")      return json({ ok: true, nextRun, now: new Date().toISOString() });
+  if (pathname === "/ops/logs")     return json({ ok: true, logs: getLogs(searchParams.get("group") ?? undefined) });
+  if (pathname === "/ops/stats")    return json({ ok: true, stats: snapMetrics(), now: new Date().toISOString() });
 
   return new Response("Not Found", { status: 404 });
 }
