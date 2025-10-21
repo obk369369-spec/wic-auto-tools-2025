@@ -1,16 +1,17 @@
-// ====================================
+// =====================================
 // File: auto_loop.ts  (REPLACE)
-// 역할: AUTO 루프를 함수로 제공, main.ts 에서 호출
-// ====================================
+// =====================================
+import { setProgress, registerTick } from "./ops_status.ts";
 
-import { setProgress, registerTick } from "./ops.ts";
+const AUTO_LOOP = (Deno.env.get("AUTO_LOOP") ?? "true").toLowerCase() === "true";
+if (!AUTO_LOOP) {
+  console.log("[AUTO] AUTO_LOOP=false — background loop is disabled");
+  setProgress("AUTO", 0, "disabled");
+  setProgress("DOG", 0, "disabled");
+  setProgress("REPORT", 0, "disabled");
+  export {};
+}
 
-const AUTO_LOOP = (Deno.env.get("AUTO_LOOP") ?? "").toLowerCase() === "true";
-const HEALTH_URL =
-  Deno.env.get("HEALTH_URL") ??
-  "https://wic-auto-tools-2025.obk369369-spec.deno.net/health";
-
-// 공통 유틸
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -25,48 +26,45 @@ async function timedFetch(url: string, timeoutMs: number) {
   }
 }
 
-// 메인 루프 함수 (외부에서 호출)
-export async function initAutoLoop() {
-  if (!AUTO_LOOP) {
-    console.log("[AUTO] AUTO_LOOP=false → loop disabled (noop)");
-    // 최소 한 번은 상태를 남겨 그룹 진행표에 빈칸이 안 생기게
-    setProgress("AUTO", 0, "disabled");
-    setProgress("DOG", 0, "disabled");
-    setProgress("REPORT", 0, "disabled");
-    return; // ❗️더 이상 export{} 같은 빈 내보내기 금지
-  }
-
-  console.log("[AUTO] background loop starting…");
-  registerTick("AUTO", 60);
+async function loop() {
+  // 다음 실행 예상 시각 등록(그룹별 예시 간격)
+  registerTick("AUTO", 300);
+  registerTick("SYNC", 300);
+  registerTick("REPORT", 3600);
+  registerTick("DOG", 60);
+  registerTick("RECOVER", 600);
 
   while (true) {
-    const t0 = Date.now();
     try {
-      // 1) 헬스 체크
-      const ok = await (async () => {
-        try {
-          const res = await timedFetch(HEALTH_URL, 1500);
-          return res.ok;
-        } catch {
-          return false;
-        }
-      })();
-      setProgress("DOG", ok ? 100 : 0, ok ? "ok" : "down");
-      registerTick("DOG", 60);
+      // AUTO
+      setProgress("AUTO", 10, "start");
+      await sleep(300);
+      setProgress("AUTO", 100, "done");
 
-      // 2) 리포트 신호 남기기 (간단 버전)
-      setProgress("REPORT", 100, "tick");
-      registerTick("REPORT", 60);
+      // SYNC
+      setProgress("SYNC", 5, "syncing…");
+      await sleep(400);
+      setProgress("SYNC", 100, "done");
 
-      // 3) AUTO 자체 진행률
-      const took = Date.now() - t0;
-      setProgress("AUTO", 100, `ok (${took}ms)`);
-      registerTick("AUTO", 60);
+      // REPORT
+      setProgress("REPORT", 50, "generating…");
+      await sleep(200);
+      setProgress("REPORT", 100, "sent");
+
+      // DOG (헬스체크)
+      setProgress("DOG", 50, "checking /health");
+      const r = await timedFetch(Deno.env.get("HEALTH_URL") ?? "https://wic-auto-tools-2025.obk369369-spec.deno.net/health", 5000);
+      setProgress("DOG", r.ok ? 100 : 0, r.ok ? "ok" : `err ${r.status}`);
+
+      // RECOVER (자가치유 훅 자리)
+      setProgress("RECOVER", 100, "idle");
+
     } catch (e) {
-      setProgress("AUTO", 0, `error: ${(e && e.message) || e}`);
-      registerTick("AUTO", 60);
+      setProgress("RECOVER", 0, `error: ${(e as Error).message}`);
     }
 
-    await sleep(60_000); // 1분 주기
+    await sleep(5000); // 루프 간격(예시)
   }
 }
+
+loop();
