@@ -1,97 +1,54 @@
 // =====================================
-// File: main.ts  (REPLACE)
-// 역할: HTTP 라우팅(/ops/*, /health, /evidence) + AUTO 루프 기동
+// File: ops.ts  (ADD/REPLACE)
+// 역할: 진행률 저장 + /ops/* 엔드포인트
 // =====================================
 
-import { buildTOC } from "./lib/toc.ts";
-import { handleOps } from "./ops.ts";
-import { initAutoLoop } from "./auto_loop.ts"; // ✅ AUTO 루프 함수
+type Prog = { percent: number; note: string; ts: number };
+const progress = new Map<string, Prog>();
+let nextRun: Record<string, string> = {}; // NAME -> ISO time
 
-// 부트 타임스탬프
-const startedAt = new Date();
-
-// 백그라운드 AUTO 루프 시작(논블로킹)
-initAutoLoop();
-
-// 공용 헬퍼
-function json(body: unknown, init: ResponseInit = {}) {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: { "content-type": "application/json; charset=utf-8", ...(init.headers ?? {}) },
-  });
+export function setProgress(group: string, percent: number, note = "") {
+  progress.set(group.toUpperCase(), { percent, note, ts: Date.now() });
 }
 
-// 서버
-Deno.serve(async (req: Request): Promise<Response> => {
-  const url = new URL(req.url);
-  const { pathname } = url;
+export function registerTick(name: string, afterSec: number) {
+  const t = new Date(Date.now() + afterSec * 1000).toISOString();
+  nextRun[name.toUpperCase()] = t;
+}
 
-  // 1) 운용/진행 라우트 (/ops/progress, /ops/eta)
-  if (pathname.startsWith("/ops/")) {
-    return handleOps(req);
+// 내부: 스냅샷
+function snapshotProgress() {
+  const obj: Record<string, Prog> = {};
+  for (const [k, v] of progress.entries()) obj[k] = v;
+  return obj;
+}
+
+// 내부: 그룹 ETA(단순 평균)
+function groupETA() {
+  const now = Date.now();
+  const items = Object.keys(nextRun).map((k) => {
+    const due = Date.parse(nextRun[k]);
+    const etaSec = Math.max(0, Math.floor((due - now) / 1000));
+    const p = progress.get(k) ?? { percent: 0, note: "", ts: now };
+    return { group: k, etaSec, progress: p.percent };
+  });
+
+  // 그룹 키 그대로 리턴(요약용)
+  return items;
+}
+
+// =====================================
+// HTTP 핸들러 (main.ts 에서 import)
+// =====================================
+export async function handleOps(req: Request): Promise<Response> {
+  const { pathname } = new URL(req.url);
+
+  if (pathname === "/ops/progress") {
+    return Response.json({ ok: true, progress: snapshotProgress() });
+  }
+  if (pathname === "/ops/eta") {
+    return Response.json({ ok: true, nextRun, eta: groupETA(), now: new Date().toISOString() });
   }
 
-  // 2) 헬스체크
-  if (pathname === "/health") {
-    return json({
-      status: "ok",
-      service: "wic-auto-tools-2025",
-      time: new Date().toISOString(),
-    });
-  }
-
-  // 3) 실행 증거(가동시간/커밋 등)
-  if (pathname === "/evidence") {
-    const now = new Date();
-    const uptimeSec = Math.floor((+now - +startedAt) / 1000);
-
-    // 환경변수에서 커밋/브랜치 주입 가능(없으면 null)
-    const commit = Deno.env.get("GIT_COMMIT") ?? null;
-    const branch = Deno.env.get("GIT_BRANCH") ?? null;
-
-    return json({
-      startedAt: startedAt.toISOString(),
-      now: now.toISOString(),
-      uptimeSec,
-      commit,
-      branch,
-    });
-  }
-
-  // 4) TOC(기존 기능 유지, 필요 시 /lib/toc.ts 사용)
-  if (pathname === "/toc") {
-    try {
-      const html = await buildTOC();
-      return new Response(html, {
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        },
-      });
-    } catch (e) {
-      return json({ ok: false, error: (e && e.message) || String(e) }, { status: 500 });
-    }
-  }
-
-  // 5) 루트/정적(간단 인덱스)
-  if (pathname === "/" || pathname === "/index.html") {
-    try {
-      const html = await Deno.readTextFile("./static/index.html");
-      return new Response(html, {
-        headers: {
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        },
-      });
-    } catch {
-      // static 이 없으면 간단 기본 페이지
-      return new Response(
-        `<!doctype html><meta charset="utf-8"><title>WIC Tools</title><h1>WIC Auto Tools 2025</h1>`,
-        { headers: { "content-type": "text/html; charset=utf-8" } },
-      );
-    }
-  }
-
-  // 6) 그 외
   return new Response("Not Found", { status: 404 });
-});
+}
