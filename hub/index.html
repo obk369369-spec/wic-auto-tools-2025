@@ -1,0 +1,58 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>WIC One-Click Hub</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body{font-family:system-ui,apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:20px}
+h1{margin-bottom:8px} .sub{color:#666;margin:0 0 16px}
+table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:8px} th{background:#f5f5f5;text-align:left}
+.ok{color:#0a0} .bad{color:#a00} .muted{color:#777}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eee;margin-left:6px}
+.grid{display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center}
+</style>
+<h1>WIC Deploy & Download Hub</h1>
+<p class="sub">모든 도구의 <strong>실행 / 다운로드 / 헬스 / 최신지표</strong>를 한 페이지에서 관리</p>
+<div id="sum" class="muted">Loading…</div>
+<table id="tbl">
+<thead>
+<tr>
+<th>도구명</th>
+<th>실행</th>
+<th>다운로드</th>
+<th>헬스</th>
+<th>지표</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<script>
+(async function(){
+const fetchJSON = async (u)=>{ try{ const r=await fetch(u,{cache:"no-store"}); if(!r.ok) throw 0; return await r.json(); }catch{ return null; } };
+const toolsIdx = await fetchJSON('/export/tools_index.json');
+const latest = await fetchJSON('/export/latest.json');
+const smoke = await fetchJSON('/export/smoke.json');
+const tbody = document.querySelector('#tbl tbody');
+tbody.innerHTML = '';
+const tools = (toolsIdx?.tools||[]);
+const smokeMap = new Map();
+(smoke?.results||[]).forEach(x=>smokeMap.set(x.id,x));
+let okCnt=0;
+for(const t of tools){
+const tr=document.createElement('tr');
+const sm=smokeMap.get(t.id);
+const ok = sm?.health?.ok && sm?.run?.ok; if(ok) okCnt++;
+const pMeta = (latest?.tools_meta||[]).find(x=>x.id===t.id) || t;
+const prog = (latest?.tools||[]).find(x=>x.id===t.id);
+tr.innerHTML = `
+<td>${t.name_kr} <span class="pill">${t.id}</span></td>
+<td><a href="${pMeta.run_url}" target="_blank">Run</a></td>
+<td><a href="${pMeta.download_url}" target="_blank">Download</a></td>
+<td><a href="${pMeta.health_url}" target="_blank" class="${ok?'ok':'bad'}">${ok?'OK':'Check'}</a></td>
+<td>${prog? (prog.progress??'?') + '% / ETA ' + (prog.eta_minutes??'?') + 'm' : '<span class="muted">N/A</span>'}</td>
+`;
+tbody.appendChild(tr);
+}
+const comp = Math.round((okCnt / Math.max(1,tools.length))*100);
+document.getElementById('sum').textContent = `도구 ${tools.length}개 · 실행/헬스 통과 ${okCnt}개 (${comp}%) · 최신지표 소스: /export/latest.json`;
+})();
+</script>
