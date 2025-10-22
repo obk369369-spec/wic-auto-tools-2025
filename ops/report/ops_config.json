@@ -1,0 +1,16 @@
+{
+"timezone": "Asia/Seoul",
+"output_dir": "/ops/report/out",
+"sources": {
+"progress_url": "",
+"eta_url": "",
+"logs_url": ""
+},
+"tools_whitelist": [],
+"rotate_keep": 72,
+"upload": {
+"progress_post_url": "https://<플랫폼주소>/ops/progress",
+"auth_token": "",
+"enabled": true
+}
+}
