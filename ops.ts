@@ -1,61 +1,63 @@
-import { serve } from "https://deno.land/std@0.223.0/http/server.ts";
+// ops.ts — WIC 공용 연산 처리 모듈 (v2025.10.22-stable)
 
-const SELF_HEAL = (Deno.env.get("SELF_HEAL") ?? "").toLowerCase() === "true";
-const REGION = Deno.env.get("DENO_REGION") ?? "ap-northeast-1";
+export async function handleOps(request: Request): Promise<Response> {
+  try {
+    const { pathname } = new URL(request.url);
 
-let progress = {
-  AUTO: 85,
-  REPORT: 90,
-  SYNC: 88,
-  DOG: 80,
-  RECOVER: 86,
-};
+    // 경로별 처리
+    if (pathname === "/ops/progress") {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          route: "/ops/progress",
+          message: "progress route active",
+          timestamp: new Date().toISOString()
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-let eta = {
-  nextRun: {
-    AUTO: "2025-10-21T09:00:00Z",
-    REPORT: "2025-10-21T09:05:00Z",
-    SYNC: "2025-10-21T09:10:00Z",
-  },
-  now: new Date().toISOString(),
-};
+    if (pathname === "/ops/eta") {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          route: "/ops/eta",
+          eta_check: "ready",
+          timestamp: new Date().toISOString()
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-serve(async (req) => {
-  const url = new URL(req.url);
+    if (pathname === "/ops/health") {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          route: "/ops/health",
+          status: "healthy",
+          uptime: `${typeof process !== "undefined" && process.uptime ? process.uptime() : "n/a"}s`,
+          timestamp: new Date().toISOString()
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-  // 🔹 /ops/progress
-  if (url.pathname === "/ops/progress") {
+    // 기본 응답
     return new Response(
       JSON.stringify({
         ok: true,
-        progress,
+        route: pathname,
+        info: "Default route from handleOps()"
       }),
       { headers: { "Content-Type": "application/json" } }
     );
-  }
-
-  // 🔹 /ops/eta
-  if (url.pathname === "/ops/eta") {
+  } catch (e) {
     return new Response(
       JSON.stringify({
-        ok: true,
-        ...eta,
+        ok: false,
+        error: String(e)
       }),
-      { headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-
-  // 🔹 /ops/selfheal 상태
-  if (url.pathname === "/ops/selfheal") {
-    return new Response(
-      JSON.stringify({
-        ok: SELF_HEAL,
-        status: SELF_HEAL ? "active" : "disabled",
-        region: REGION,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
-  }
-
-  return new Response("OPS handler active", { status: 200 });
-});
+}
