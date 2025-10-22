@@ -1,41 +1,34 @@
-// =====================================
-// File: main.ts  (REPLACE 섹션만)
-// =====================================
-import { buildTOC } from "./lib/toc.ts";
+// /main.ts (v2025.10.22)
 import { handleOps } from "./ops.ts";
+import { handleExport } from "./ops_export.ts";
 
-const startedAt = new Date();
 
-Deno.serve(async (req: Request): Promise<Response> => {
-  const { pathname } = new URL(req.url);
+const kv = await Deno.openKv();
 
-  // 1) OPS 라우트
-  if (pathname.startsWith("/ops/")) {
-    return handleOps(req);
-  }
 
-  // 2) /health
-  if (pathname === "/health") {
-    return Response.json({ status: "ok", service: "wic-auto-tools-2025", time: new Date().toISOString() });
-  }
+export default {
+async fetch(req: Request): Promise<Response> {
+const { pathname } = new URL(req.url);
 
-  // 3) /evidence
-  if (pathname === "/evidence") {
-    return Response.json({
-      startedAt: startedAt.toISOString(),
-      now: new Date().toISOString(),
-      uptimeSec: Math.floor((Date.now() - startedAt.getTime()) / 1000),
-      commit: null,
-      branch: null,
-    });
-  }
 
-  // 4) 기존 루트
-  if (pathname === "/" || pathname === "/index.html") {
-    const html = await Deno.readTextFile("./static/index.html");
-    return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
-  }
+if (pathname.startsWith("/ops/")) {
+return await handleOps(req, kv);
+}
+if (pathname === "/export/latest.json") {
+return await handleExport(req, kv);
+}
 
-  // 5) 기타
-  return new Response("Not Found", { status: 404 });
-});
+
+// 루트 인덱스
+const body = `<!doctype html><html><body>
+<h1>WIC Tools (Deno Minimal)</h1>
+<ul>
+<li><a href="/health">/health</a></li>
+<li><a href="/toc">/toc</a></li>
+<li><a href="/evidence">/evidence</a></li>
+<li><a href="/export/latest.json">/export/latest.json</a> (실측 보고)</li>
+</ul>
+</body></html>`;
+return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+},
+};
