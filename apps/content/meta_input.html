@@ -1,0 +1,23 @@
+<!-- apps/content/meta_input.html -->
+<!doctype html><meta charset="utf-8">
+<title>메타데이터 입력 도구</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{font:14px/1.5 system-ui;margin:20px}label{display:block;margin:.5rem 0 .25rem}input,textarea{width:100%;padding:.6rem;border:1px solid #ccc;border-radius:6px}button{margin-top:12px;padding:.6rem 1rem;border:0;border-radius:8px;background:#0a7;color:#fff;cursor:pointer}</style>
+<h1>메타데이터 입력 도구</h1>
+<form id="f">
+  <label>문서/도구 ID</label><input name="doc_id" required>
+  <label>제목</label><input name="title" required>
+  <label>키워드(쉼표 구분)</label><input name="keywords">
+  <label>요약</label><textarea name="summary" rows="5"></textarea>
+  <button type="submit">저장(로컬 미리보기)</button>
+</form>
+<pre id="out" style="background:#f7f7f7;padding:12px;border-radius:8px;margin-top:12px"></pre>
+<script>
+document.getElementById('f').addEventListener('submit', e=>{
+  e.preventDefault();
+  const data=Object.fromEntries(new FormData(e.target).entries());
+  data.ts=new Date().toISOString();
+  document.getElementById('out').textContent=JSON.stringify({ok:true,meta:data},null,2);
+  // 필요 시 API로 POST: fetch('/ops/meta/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+});
+</script>
