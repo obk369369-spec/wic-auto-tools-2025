@@ -1,0 +1,13 @@
+{
+"jobs": [
+{
+"id": "report-hourly-upload",
+"command": "deno run -A /ops/report/report_loop_upload.ts",
+"schedule": "0 * * * *",
+"timezone": "Asia/Seoul",
+"retry": { "max": 2, "backoff": "exponential" },
+"stdout": "/ops/logs/report-hourly.log",
+"stderr": "/ops/logs/report-hourly.err"
+}
+]
+}
