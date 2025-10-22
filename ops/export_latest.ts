@@ -16,3 +16,23 @@ return new Response(data, { headers: { "Content-Type": "application/json" } });
 return new Response(JSON.stringify({ ok:false, message:"no export yet" }), { status:404, headers:{"Content-Type":"application/json"}});
 }
 }
+
+
+if (import.meta.main) {
+await Deno.mkdir(EXPORT_DIR, { recursive: true }).catch(()=>{});
+const files: string[] = [];
+for await (const f of Deno.readDir(REPORT_DIR)) {
+if (f.isFile && f.name.startsWith("report-") && f.name.endsWith(".json")) files.push(f.name);
+}
+files.sort();
+const latest = files.at(-1);
+if (!latest) {
+console.log("[EXPORT] no report files yet");
+Deno.exit(0);
+}
+const src = join(REPORT_DIR, latest);
+const json = await Deno.readTextFile(src);
+await Deno.writeTextFile(EXPORT_FILE, json);
+await kvSet("latest_report_json", json); // 인메모리 대체용
+console.log(`[EXPORT] ${latest} -> /export/latest.json`);
+}
