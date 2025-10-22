@@ -1,0 +1,24 @@
+{
+"version": "2025.10.22",
+"tools": [
+{
+"id": "admin_dashboard",
+"name_kr": "관리자 대시보드",
+"run_url": "/apps/admin/index.html",
+"download_url": "/packs/admin_dashboard.zip",
+"health_url": "/ops/health?tool=admin_dashboard",
+"pack_src": "/apps/admin",
+"enabled": true
+},
+{
+"id": "report_preview",
+"name_kr": "리포트 미리보기",
+"run_url": "/apps/preview/index.html",
+"download_url": "/packs/report_preview.zip",
+"health_url": "/ops/health?tool=report_preview",
+"pack_src": "/apps/preview",
+"enabled": true
+}
+// … 나머지 도구 계속 추가 (총 130종 가능)
+]
+}
