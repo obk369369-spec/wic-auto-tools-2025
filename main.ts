@@ -1,34 +1,26 @@
-// /main.ts (v2025.10.22)
+// /main.ts — 라우터 예시(핵심: openKv 제거, kv_safe 사용)
 import { handleOps } from "./ops.ts";
-import { handleExport } from "./ops_export.ts";
-
-
-const kv = await Deno.openKv();
+import { kvGet, kvSet } from "./lib/kv_safe.ts";
 
 
 export default {
 async fetch(req: Request): Promise<Response> {
-const { pathname } = new URL(req.url);
+const url = new URL(req.url);
 
 
-if (pathname.startsWith("/ops/")) {
-return await handleOps(req, kv);
+// 진행률 최신본 export 캐시 (선택)
+if (url.pathname === "/export/latest.json") {
+const v = await kvGet<string>("latest_report_json");
+if (v) return new Response(v, { headers: { "Content-Type": "application/json" } });
+return new Response(JSON.stringify({ ok:false, message:"no export yet" }), { status: 404, headers: { "Content-Type": "application/json" }});
 }
-if (pathname === "/export/latest.json") {
-return await handleExport(req, kv);
-}
 
 
-// 루트 인덱스
-const body = `<!doctype html><html><body>
-<h1>WIC Tools (Deno Minimal)</h1>
-<ul>
-<li><a href="/health">/health</a></li>
-<li><a href="/toc">/toc</a></li>
-<li><a href="/evidence">/evidence</a></li>
-<li><a href="/export/latest.json">/export/latest.json</a> (실측 보고)</li>
-</ul>
-</body></html>`;
-return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+// /ops/* 라우트 위임
+if (url.pathname.startsWith("/ops/")) return handleOps(req);
+
+
+// 기본 인덱스
+return new Response(`<!doctype html><meta charset=\"utf-8\"><h1>WIC Tools (Deno Minimal)</h1><ul><li><a href=\"/health\">/health</a></li><li><a href=\"/toc\">/toc</a></li><li><a href=\"/evidence\">/evidence</a></li><li><a href=\"/export/latest.json\">/export/latest.json</a></li></ul>`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 },
 };
