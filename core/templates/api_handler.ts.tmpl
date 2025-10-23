@@ -1,0 +1,16 @@
+// AUTO-GENERATED from spec {{id}}
+export async function {{handler_name}}(req: Request): Promise<Response> {
+if (req.method !== "{{method}}")
+return new Response("method",{status:405,headers:{"Access-Control-Allow-Origin":"*"}});
+try {
+const body = await req.json();
+// TODO: validate by schema: {{json_schema}}
+return new Response(JSON.stringify({ ok:true, received: body }),{
+headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+});
+} catch(e){
+return new Response(JSON.stringify({ ok:false, error:String(e) }),{
+status:500, headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+});
+}
+}
