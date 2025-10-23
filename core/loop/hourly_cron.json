@@ -1,8 +1,6 @@
 {
   "RRULE": "FREQ=HOURLY;BYMINUTE=0;BYSECOND=0",
+  "tz": "Asia/Seoul",
   "enabled": true,
-  "job": "report_dispatch",
-  "targets": [
-    "https://wic-auto-tools-2025.obk369369-spec.deno.net/export/latest.json"
-  ]
+  "job": "report_dispatch"
 }
