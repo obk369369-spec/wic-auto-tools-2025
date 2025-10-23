@@ -1,0 +1,8 @@
+{
+  "job": "report_post",
+  "input": "/export/latest.json",
+  "output": "/ops/reports/compact_table.json",
+  "fields": ["tool_name", "progress", "ETA", "status", "self_heal", "links"],
+  "summary": ["active", "standby", "blocked", "avg_progress"],
+  "timestamp": true
+}
