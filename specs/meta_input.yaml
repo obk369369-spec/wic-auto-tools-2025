@@ -1,0 +1,29 @@
+id: meta_input
+name_kr: 메타데이터 입력 도구
+kind: web+api
+routes:
+web: /apps/content/meta_input.html
+api:
+- path: /ops/meta/ingest
+method: POST
+schema:
+items: array
+item:
+doc_id: string(required)
+title: string(required)
+keywords: array(string)
+summary: string
+ui:
+upload: xlsx
+mapping:
+- title
+- summary
+- keywords
+- doc_id
+validate:
+- rule: required(doc_id,title)
+- rule: len(title) > 1
+pack:
+src: /apps/content
+health:
+url: /ops/health?tool=meta_input
