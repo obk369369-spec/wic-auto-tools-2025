@@ -1,85 +1,102 @@
-// main.ts — KV 안정화 + 자가복구 포함 버전 (2025.10 Final)
-// Run with: deno run --allow-net --allow-env --unstable-kv src/main.ts
-// 또는 deno.json에 { "unstable": ["kv"] } 추가
+// main.ts — Deploy 최종본 (메모리 캐시, 파일/KV 미사용)
+// 엔드포인트: 
+//  GET  /export/latest.json  → 최신 실측 지표(메모리 캐시)
+//  GET  /ops/health          → 헬스 체크
+//  POST /ops/bootstrap       → 초기 시드 생성
+//  POST /ops/update          → 파이프라인이 최신 지표 업로드(웹훅)
 
-import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
-
-const kv = await Deno.openKv();
-const HEALTH_KEY = ["ops", "health"];
-const EXPORT_KEY = ["export", "latest"];
-const STATUS_KEY = ["ops", "status"];
-
-async function bootstrap() {
-  const init = {
-    tools: [],
-    active: 0,
-    standby: 0,
-    blocked: 0,
-    avg_progress: 0,
-    updated: new Date().toISOString(),
-  };
-  await kv.set(EXPORT_KEY, init);
-  await kv.set(STATUS_KEY, { status: "ready", t: Date.now() });
-  await kv.set(HEALTH_KEY, { ok: true, ts: Date.now(), msg: "bootstrap ok" });
+// Deno Deploy에서 바로 동작 (추가 플래그 불필요)
+function j(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
 }
-
-async function updateHealth(ok: boolean, msg = "") {
-  await kv.set(HEALTH_KEY, {
-    ok,
-    msg,
-    ts: Date.now(),
+function t(s: string, status = 200) {
+  return new Response(s, {
+    status,
+    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
   });
 }
 
-async function getHealth() {
-  const h = await kv.get(HEALTH_KEY);
-  return h.value ?? { ok: false, msg: "uninitialized" };
+// —— 메모리 캐시(리전별 런타임 수명 동안 유지) ——
+let latest: any = null;
+let lastHealth = { ok: false, ts: 0, msg: "uninitialized" };
+
+function nowISO() { return new Date().toISOString(); }
+function isStale(ts: number, maxMin = 90) {
+  return Date.now() - ts > maxMin * 60 * 1000;
 }
 
+// 자가치유(90분 이상 갱신 없으면 시드 재주입)
 async function selfHeal() {
-  const h = await getHealth();
-  const elapsed = Date.now() - (h.ts ?? 0);
-  if (elapsed > 1000 * 60 * 90 || !h.ok) {
-    await updateHealth(true, "auto self-heal triggered");
-    const data = await kv.get(EXPORT_KEY);
-    if (!data.value) await bootstrap();
+  if (!latest || !latest._ts || isStale(latest._ts)) {
+    latest = latest ?? {
+      generated_at: nowISO(),
+      tools: [],
+      summary: { active: 0, standby: 0, blocked: 0, avg_progress: 0.0 },
+      _ts: Date.now(),
+      _note: "seeded by self-heal",
+    };
   }
+  lastHealth = { ok: true, ts: Date.now(), msg: "alive" };
 }
+setInterval(selfHeal, 60_000); // 1분마다 점검
 
-setInterval(selfHeal, 1000 * 60 * 10); // 10분마다 자가복구
+export default {
+  async fetch(req: Request): Promise<Response> {
+    const { pathname } = new URL(req.url);
 
-serve(async (req) => {
-  const url = new URL(req.url);
+    // 최신 실측 지표
+    if (pathname === "/export/latest.json") {
+      if (!latest) return j({ error: "ENOENT", hint: "POST /ops/bootstrap or /ops/update first" }, 404);
+      return j({
+        ...latest,
+        pipeline_status: isStale(latest._ts) ? "stalled" : "ok",
+      });
+    }
 
-  if (url.pathname === "/ops/bootstrap") {
-    await bootstrap();
-    return new Response(JSON.stringify({ ok: true, msg: "bootstrap done" }), {
-      headers: { "content-type": "application/json" },
-    });
-  }
+    // 헬스 체크
+    if (pathname === "/ops/health") {
+      return j({ ...lastHealth, tz: "Asia/Seoul", iso: nowISO() });
+    }
 
-  if (url.pathname === "/ops/health") {
-    const h = await getHealth();
-    return new Response(JSON.stringify(h), {
-      headers: { "content-type": "application/json" },
-    });
-  }
+    // 초기 시드 생성(수동 1회)
+    if (pathname === "/ops/bootstrap" && req.method === "POST") {
+      latest = {
+        generated_at: nowISO(),
+        tools: [],
+        summary: { active: 0, standby: 0, blocked: 0, avg_progress: 0.0 },
+        _ts: Date.now(),
+        _note: "seeded by bootstrap",
+      };
+      lastHealth = { ok: true, ts: Date.now(), msg: "bootstrap ok" };
+      return j({ ok: true, created: "/export/latest.json" });
+    }
 
-  if (url.pathname === "/export/latest.json") {
-    const d = await kv.get(EXPORT_KEY);
-    return new Response(JSON.stringify(d.value ?? {}), {
-      headers: { "content-type": "application/json" },
-    });
-  }
+    // 파이프라인이 업로드(정시 루프/1분 루프)
+    if (pathname === "/ops/update" && req.method === "POST") {
+      const payload = await req.json().catch(() => ({}));
+      // 필수 필드 보정
+      const summary = payload.summary ?? { active: 0, standby: 0, blocked: 0, avg_progress: 0.0 };
+      latest = {
+        ...payload,
+        summary,
+        generated_at: nowISO(),
+        _ts: Date.now(),
+      };
+      lastHealth = { ok: true, ts: Date.now(), msg: "updated" };
+      return j({ ok: true, stored: true });
+    }
 
-  if (url.pathname === "/ops/update") {
-    const body = await req.json().catch(() => ({}));
-    await kv.set(EXPORT_KEY, { ...body, updated: new Date().toISOString() });
-    await updateHealth(true, "updated");
-    return new Response(JSON.stringify({ ok: true }));
-  }
+    // 잘못된 하위 경로 오타 방지
+    if (pathname.startsWith("/export/latest.json/")) {
+      return j({ error: "BAD_PATH", hint: "use /ops/health (not /export/latest.json/ops/health)" }, 400);
+    }
 
-  return new Response("ok");
-});
-
-console.log("✅ KV 서버 정상 실행 중 (http://localhost:8000)");
+    return t("OK", 200);
+  },
+};
