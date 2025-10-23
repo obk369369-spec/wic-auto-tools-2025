@@ -1,0 +1,9 @@
+id: webpage_editor
+name_kr: 홈페이지 수정 도구
+kind: web
+routes:
+web: /apps/content/webpage_editor.html
+pack:
+src: /apps/content
+health:
+url: /ops/health?tool=webpage_editor
