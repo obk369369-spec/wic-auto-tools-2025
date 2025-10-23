@@ -1,7 +1,7 @@
 {
   "auto_display": true,
   "interval_min": 1,
-  "report_targets": [
-    "https://wic-auto-tools-2025.obk369369-spec.deno.net/export/latest.json"
-  ]
+  "tz": "Asia/Seoul",
+  "export_target": "/export/latest.json",
+  "fallback_interval_min": 5
 }
