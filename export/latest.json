@@ -1,0 +1,19 @@
+{
+  "generated_at": "2025-10-23T07:00:00+09:00",
+  "tools": [
+    {
+      "name_kr": "메타데이터 입력기",
+      "progress_pct": 92,
+      "eta_min": 8,
+      "status": "running",
+      "self_heal": true,
+      "links": {
+        "progress": "https://.../ops/progress?tool=meta",
+        "eta": "https://.../ops/eta?tool=meta",
+        "logs": "https://.../ops/logs#meta",
+        "health": "https://.../ops/health"
+      }
+    }
+  ],
+  "summary": { "active": 1, "standby": 0, "blocked": 0, "avg_progress": 92.0 }
+}
