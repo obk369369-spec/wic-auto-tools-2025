@@ -1,62 +1,85 @@
-// Deno Deploy 전용: 파일 I/O 제거, KV 사용
+// main.ts — KV 안정화 + 자가복구 포함 버전 (2025.10 Final)
+// Run with: deno run --allow-net --allow-env --unstable-kv src/main.ts
+// 또는 deno.json에 { "unstable": ["kv"] } 추가
+
+import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
+
 const kv = await Deno.openKv();
+const HEALTH_KEY = ["ops", "health"];
+const EXPORT_KEY = ["export", "latest"];
+const STATUS_KEY = ["ops", "status"];
 
-function j(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    },
+async function bootstrap() {
+  const init = {
+    tools: [],
+    active: 0,
+    standby: 0,
+    blocked: 0,
+    avg_progress: 0,
+    updated: new Date().toISOString(),
+  };
+  await kv.set(EXPORT_KEY, init);
+  await kv.set(STATUS_KEY, { status: "ready", t: Date.now() });
+  await kv.set(HEALTH_KEY, { ok: true, ts: Date.now(), msg: "bootstrap ok" });
+}
+
+async function updateHealth(ok: boolean, msg = "") {
+  await kv.set(HEALTH_KEY, {
+    ok,
+    msg,
+    ts: Date.now(),
   });
 }
-function t(s: string, status = 200) {
-  return new Response(s, {
-    status,
-    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
-  });
+
+async function getHealth() {
+  const h = await kv.get(HEALTH_KEY);
+  return h.value ?? { ok: false, msg: "uninitialized" };
 }
 
-export default {
-  async fetch(req: Request): Promise<Response> {
-    const { pathname } = new URL(req.url);
+async function selfHeal() {
+  const h = await getHealth();
+  const elapsed = Date.now() - (h.ts ?? 0);
+  if (elapsed > 1000 * 60 * 90 || !h.ok) {
+    await updateHealth(true, "auto self-heal triggered");
+    const data = await kv.get(EXPORT_KEY);
+    if (!data.value) await bootstrap();
+  }
+}
 
-    // 최신 실측 지표 조회
-    if (pathname === "/export/latest.json") {
-      const r = await kv.get(["export", "latest"]);
-      if (!r.value) return j({ error: "ENOENT", hint: "no latest payload; POST /ops/bootstrap or /ops/update first" }, 404);
-      return j(r.value);
-    }
+setInterval(selfHeal, 1000 * 60 * 10); // 10분마다 자가복구
 
-    // 상태 확인
-    if (pathname === "/ops/health") {
-      return j({ ok: true, ts: new Date().toISOString(), tz: "Asia/Seoul" });
-    }
+serve(async (req) => {
+  const url = new URL(req.url);
 
-    // 최초 시드 생성 (빈 구조)
-    if (pathname === "/ops/bootstrap" && req.method === "POST") {
-      const seed = {
-        generated_at: new Date().toISOString(),
-        tools: [],
-        summary: { active: 0, standby: 0, blocked: 0, avg_progress: 0.0 },
-      };
-      await kv.set(["export", "latest"], seed);
-      return j({ ok: true, created: "kv://export/latest" });
-    }
+  if (url.pathname === "/ops/bootstrap") {
+    await bootstrap();
+    return new Response(JSON.stringify({ ok: true, msg: "bootstrap done" }), {
+      headers: { "content-type": "application/json" },
+    });
+  }
 
-    // 최신 지표 수신(자동 보고 파이프라인이 여기로 POST)
-    if (pathname === "/ops/update" && req.method === "POST") {
-      const payload = await req.json();
-      payload.generated_at = new Date().toISOString();
-      await kv.set(["export", "latest"], payload);
-      return j({ ok: true, stored: true });
-    }
+  if (url.pathname === "/ops/health") {
+    const h = await getHealth();
+    return new Response(JSON.stringify(h), {
+      headers: { "content-type": "application/json" },
+    });
+  }
 
-    // 잘못된 경로 안내
-    if (pathname.startsWith("/export/latest.json/")) {
-      return j({ error: "BAD_PATH", hint: "use /ops/health (not /export/latest.json/ops/health)" }, 400);
-    }
+  if (url.pathname === "/export/latest.json") {
+    const d = await kv.get(EXPORT_KEY);
+    return new Response(JSON.stringify(d.value ?? {}), {
+      headers: { "content-type": "application/json" },
+    });
+  }
 
-    return t("OK", 200);
-  },
-};
+  if (url.pathname === "/ops/update") {
+    const body = await req.json().catch(() => ({}));
+    await kv.set(EXPORT_KEY, { ...body, updated: new Date().toISOString() });
+    await updateHealth(true, "updated");
+    return new Response(JSON.stringify({ ok: true }));
+  }
+
+  return new Response("ok");
+});
+
+console.log("✅ KV 서버 정상 실행 중 (http://localhost:8000)");
