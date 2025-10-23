@@ -1,0 +1,9 @@
+{
+  "name": "report_dispatch",
+  "description": "Fetch progress JSON and post compact table.",
+  "target": "https://wic-auto-tools-2025.obk369369-spec.deno.net/export/latest.json",
+  "retry_on_fail": true,
+  "self_heal": true,
+  "fail_fast": true,
+  "loopback_post": true
+}
