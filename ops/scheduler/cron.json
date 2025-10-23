@@ -1,10 +1,5 @@
 {
 "jobs": [
-{ "id": "report-hourly-upload", "command": "deno run -A /ops/report/report_loop_upload.ts", "schedule": "0 * * * *", "timezone": "Asia/Seoul" },
-{ "id": "build-tools-index", "command": "deno run -A /tools/auto_loader.ts", "schedule": "2,32 * * * *", "timezone": "Asia/Seoul" },
-{ "id": "smoke-after-build", "command": "deno run -A /ops/smoke_tests.ts", "schedule": "5,35 * * * *", "timezone": "Asia/Seoul" },
-{ "id": "export-latest-sync", "command": "deno run -A /ops/export_latest.ts", "schedule": "10,20,30,40,50 * * * *", "timezone": "Asia/Seoul" },
-{ "id": "build-packs", "command": "deno run -A /ops/build_packs.ts", "schedule": "12,42 * * * *", "timezone": "Asia/Seoul" },
-{ "id": "watchdog", "command": "deno run -A /ops/watchdog.ts", "schedule": "*/5 * * * *", "timezone": "Asia/Seoul" }
+{ "id": "autodev-one-shot", "command": "deno run -A /ops/autodev_pipeline.ts", "schedule": "0 * * * *", "timezone": "Asia/Seoul" }
 ]
 }
