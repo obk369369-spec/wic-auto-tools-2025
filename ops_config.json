@@ -1,10 +1,15 @@
 {
-"export_latest": { "enabled": true, "path": "/export/latest.json" },
-"upload": {
-"enabled": true,
-"interval_min": 1,
-"progress_post_url":
-"https://wic-auto-tools-2025.obk369369-spec.deno.net/ops/update"
-},
-"logging": { "enabled": true }
+  "canonical_host": "wic-auto-tools-2025.obk369369-spec.deno.net",
+  "upload": {
+    "enabled": true,
+    "progress_post_url": "https://wic-auto-tools-2025.obk369369-spec.deno.net/ops/update"
+  },
+  "schedule": {
+    "report_interval_minutes": 60,
+    "report_cron": "0 * * * *"
+  },
+  "bootstrap": {
+    "auto_run_on_deploy": false
+  },
+  "notes": "핵심: 위 두 파일(main.ts + ops_config.json)만 한번에 교체하면 export/latest.json 404 문제와 호스트 불일치 문제 대부분이 해결됩니다."
 }
