@@ -1,0 +1,17 @@
+{
+"runset": {
+"select": "*",
+"groups": [
+{ "name": "REPORT", "match": ["report", "meta", "toc", "word"] },
+{ "name": "CUSTOMER", "match": ["customer", "crm", "sync"] },
+{ "name": "TRADE", "match": ["trade", "wire", "nfpa", "invoice"] },
+{ "name": "SITE", "match": ["subsite", "webpage", "editor"] }
+],
+"rules": {
+"precheck": { "timeout_sec": 30, "retries": 2 },
+"simulate": { "enabled": true, "cases": 5 },
+"deploy": { "enabled": true },
+"self_heal": { "enabled": true, "backoff_min": 5 }
+}
+}
+}
