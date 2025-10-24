@@ -1,0 +1,50 @@
+{
+  "init": true,
+  "summary": {
+    "active": 3,
+    "standby": 1,
+    "blocked": 0,
+    "avg_progress": 81.7
+  },
+  "tools": [
+    {
+      "name_kr": "보고서 자동 생성기",
+      "progress_pct": 78,
+      "eta_min": 16,
+      "status": "active",
+      "self_heal": true,
+      "links": {
+        "progress": "/ops/progress?tool=report",
+        "eta": "/ops/eta?tool=report",
+        "logs": "/ops/logs#report",
+        "health": "/ops/health"
+      }
+    },
+    {
+      "name_kr": "고객 데이터 주입기",
+      "progress_pct": 85,
+      "eta_min": 12,
+      "status": "active",
+      "self_heal": true,
+      "links": {
+        "progress": "/ops/progress?tool=customer",
+        "eta": "/ops/eta?tool=customer",
+        "logs": "/ops/logs#customer",
+        "health": "/ops/health"
+      }
+    },
+    {
+      "name_kr": "무역결제 연동기",
+      "progress_pct": 69,
+      "eta_min": 28,
+      "status": "standby",
+      "self_heal": true,
+      "links": {
+        "progress": "/ops/progress?tool=trade",
+        "eta": "/ops/eta?tool=trade",
+        "logs": "/ops/logs#trade",
+        "health": "/ops/health"
+      }
+    }
+  ]
+}
