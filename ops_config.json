@@ -1,9 +1,10 @@
 {
-  "export_latest": { "enabled": true, "path": "/export/latest.json" },
-  "upload": {
-    "enabled": true,
-    "interval_min": 1,
-    "progress_post_url": "https://wic-auto-tools-2025.obk369369-spec.deno.net/ops/update"
-  },
-  "logging": { "enabled": true }
+"export_latest": { "enabled": true, "path": "/export/latest.json" },
+"upload": {
+"enabled": true,
+"interval_min": 1,
+"progress_post_url":
+"https://wic-auto-tools-2025.obk369369-spec.deno.net/ops/update"
+},
+"logging": { "enabled": true }
 }
