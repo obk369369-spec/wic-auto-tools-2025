@@ -1,88 +1,145 @@
 // /main.ts
-// 엔트리포인트: /report/live, /ops/*, /export/latest.json 라우팅 + 자동 복구 루프
-import { generateCompact, isStale90m } from "./lib/report.ts";
+// 단일 엔트리: /report/live, /export/latest.json, /ops/* + 자동 자가치유
+// 외부 파일/임포트 없음. Deno Deploy 표준 API만 사용.
+const ORIGIN =
+  Deno.env.get("WIC_ORIGIN") ??
+  "https://wic-auto-tools-2025.obk369369-spec.deno.net";
 
-const ORIGIN = Deno.env.get("WIC_ORIGIN")
-  ?? "https://wic-auto-tools-2025.obk369369-spec.deno.net";
+// ---------- 유틸 ----------
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
+async function post(path: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${ORIGIN}${path}`, { method: "POST", cache: "no-store" });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+async function getLatest(): Promise<{ ok: boolean; status: number; data: any | null }> {
+  try {
+    const r = await fetch(`${ORIGIN}/export/latest.json`, { cache: "no-store" });
+    const data = r.ok ? await r.json().catch(() => null) : null;
+    return { ok: r.ok && !!data, status: r.status, data };
+  } catch {
+    return { ok: false, status: 0, data: null };
+  }
+}
+function isStale90m(obj: any): boolean {
+  const ts = typeof obj?.ts === "number" ? obj.ts : 0;
+  return !ts || (Date.now() - ts) > 90 * 60 * 1000;
+}
+function toInt(n: any, d = 0) { const v = Number(n); return Number.isFinite(v) ? Math.round(v) : d; }
 
-async function post(path: string) {
-  const r = await fetch(`${ORIGIN}${path}`, { method: "POST", cache: "no-store" });
-  return r.ok;
+// ---------- compact 변환 ----------
+function toCompact(raw: any, origin: string) {
+  const tools = Array.isArray(raw?.tools) ? raw.tools : [];
+  const rows = tools.map((t: any) => ({
+    "도구명(한글)": t?.name_kr ?? "-",
+    "진행률(%)": toInt(t?.progress, 0),
+    "ETA(분)": (t?.eta_min ?? null),
+    "상태": t?.status ?? "-",
+    "자가치유": t?.self_heal ?? "-",
+    "링크": {
+      progress: t?.links?.progress ?? `${origin}/ops/progress`,
+      eta:      t?.links?.eta      ?? `${origin}/ops/eta`,
+      logs:     t?.links?.logs     ?? `${origin}/ops/logs`,
+      health:   t?.links?.health   ?? `${origin}/ops/health`,
+    },
+    "그룹": t?.group ?? "misc",
+  }));
+
+  // 그룹 요약
+  const agg = new Map<string, { cnt:number; active:number; standby:number; blocked:number; done:number; sum:number }>();
+  for (const r of rows) {
+    const g = r["그룹"];
+    if (!agg.has(g)) agg.set(g, { cnt:0, active:0, standby:0, blocked:0, done:0, sum:0 });
+    const a = agg.get(g)!;
+    a.cnt++; a.sum += toInt(r["진행률(%)"]);
+    const s = r["상태"];
+    if (s === "active") a.active++; else if (s === "standby") a.standby++;
+    else if (s === "blocked") a.blocked++; else if (s === "done") a.done++;
+  }
+  const group_summaries = [...agg.entries()].map(([group, v]) => ({
+    group, active:v.active, standby:v.standby, blocked:v.blocked, done:v.done,
+    avg_progress: v.cnt ? Math.round(v.sum / v.cnt) : 0,
+  }));
+
+  const ts = typeof raw?.ts === "number" ? raw.ts : 0;
+  const stalled = isStale90m(raw);
+  return {
+    ok: true,
+    ts,
+    iso: ts ? new Date(ts).toISOString() : null,
+    stalled,
+    warn: stalled ? "데이터가 90분 이상 갱신되지 않았습니다. 파이프라인 정지(stalled) 가능성." : null,
+    rows,
+    group_summaries,
+  };
 }
-async function getJson(path: string) {
-  const r = await fetch(`${ORIGIN}${path}`, { cache: "no-store" });
-  if (!r.ok) return { ok:false, status:r.status, data:null };
-  const data = await r.json().catch(() => null);
-  return { ok:true, status:r.status, data };
-}
-async function selfHealAndFetch() {
-  // 1) bootstrap → 2) update → 3) latest 재조회
+
+// ---------- 자가치유 ----------
+async function selfHeal(): Promise<void> {
   await post("/ops/bootstrap");
   await post("/ops/update");
-  const latest = await getJson("/export/latest.json");
-  return latest;
 }
 
+// ---------- 라우터 ----------
 Deno.serve(async (req) => {
-  const url = new URL(req.url);
-  const path = url.pathname;
+  try {
+    const { pathname } = new URL(req.url);
 
-  // 상태 핑
-  if (path === "/ops/health") {
-    return new Response(
-      JSON.stringify({ ok:true, tz:"Asia/Seoul", iso:new Date().toISOString() }),
-      { headers: { "content-type":"application/json; charset=utf-8" } }
-    );
-  }
-
-  // 실측 보고용 Compact JSON
-  if (path === "/report/live") {
-    // 1차 시도
-    let latest = await getJson("/export/latest.json");
-    // 실패 or 90분 지연 → 자가복구 후 재시도
-    const stale = latest.ok && isStale90m(latest.data);
-    if (!latest.ok || stale) latest = await selfHealAndFetch();
-
-    if (!latest.ok || !latest.data) {
-      return new Response(
-        JSON.stringify({
-          ok:false, stalled:true, reason:"404/timeout or stale>90m",
-          hint:"POST /ops/bootstrap → POST /ops/update 후 재시도",
-        }),
-        { status:503, headers:{ "content-type":"application/json; charset=utf-8" } }
-      );
+    if (pathname === "/ops/health") {
+      return json({ ok: true, tz: "Asia/Seoul", iso: new Date().toISOString() });
     }
-    const compact = await generateCompact(latest.data, ORIGIN);
-    return new Response(JSON.stringify(compact), {
-      headers:{ "content-type":"application/json; charset=utf-8", "cache-control":"no-store" }
-    });
-  }
 
-  // 원본 latest.json 프록시(캐시 무효화)
-  if (path === "/export/latest.json") {
-    const r = await fetch(`${ORIGIN}/export/latest.json`, { cache:"no-store" });
-    return new Response(r.body, {
-      status:r.status,
-      headers:{ "content-type":"application/json; charset=utf-8", "cache-control":"no-store" }
-    });
-  }
+    if (pathname === "/ops/bootstrap" && req.method === "POST") {
+      const ok = await post("/ops/bootstrap");
+      return json({ ok }, ok ? 200 : 500);
+    }
 
-  // 수동 복구 트리거(옵션)
-  if (path === "/ops/update" && req.method === "POST") {
-    const ok = await post("/ops/update");
-    return new Response(JSON.stringify({ ok }), {
-      status: ok ? 200 : 500,
-      headers:{ "content-type":"application/json; charset=utf-8" }
-    });
-  }
-  if (path === "/ops/bootstrap" && req.method === "POST") {
-    const ok = await post("/ops/bootstrap");
-    return new Response(JSON.stringify({ ok }), {
-      status: ok ? 200 : 500,
-      headers:{ "content-type":"application/json; charset=utf-8" }
-    });
-  }
+    if (pathname === "/ops/update" && req.method === "POST") {
+      const ok = await post("/ops/update");
+      return json({ ok }, ok ? 200 : 500);
+    }
 
-  // 기본
-  return new Response("OK");
+    // 원본 latest 프록시
+    if (pathname === "/export/latest.json") {
+      const r = await fetch(`${ORIGIN}/export/latest.json`, { cache: "no-store" });
+      return new Response(r.body, {
+        status: r.status,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
+
+    // 대화창용 compact 리포트(자동 복구 포함)
+    if (pathname === "/report/live") {
+      // 1차 시도
+      let latest = await getLatest();
+      // 실패 또는 stale → 자가치유 → 재시도
+      if (!latest.ok || isStale90m(latest.data)) {
+        await selfHeal();
+        latest = await getLatest();
+      }
+      if (!latest.ok || !latest.data) {
+        return json({
+          ok: false,
+          stalled: true,
+          reason: "404/unreachable or stale>90m",
+          hint: "POST /ops/bootstrap → POST /ops/update 후 재시도",
+        }, 503);
+      }
+      const compact = toCompact(latest.data, ORIGIN);
+      return json(compact);
+    }
+
+    // 기본
+    return new Response("OK", { headers: { "content-type": "text/plain; charset=utf-8" } });
+  } catch (e) {
+    return json({ ok:false, error: String(e) }, 500);
+  }
 });
