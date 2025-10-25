@@ -1,8 +1,10 @@
+// /deno.jsonc
 {
   "tasks": {
-    "dev": "deno run -A --watch main.ts"
+    "start": "deno run -A --no-check src/main.ts"
   },
   "deploy": {
-    "entrypoint": "main.ts"
+    "project": "wic-auto-tools-2025",
+    "entrypoint": "src/main.ts"
   }
 }
