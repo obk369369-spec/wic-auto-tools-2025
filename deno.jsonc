@@ -4,6 +4,9 @@
   },
   "deploy": {
     "project": "wic-auto-tools-2025",
-    "entrypoint": "main.ts"
+    "entrypoint": "main.ts",
+    "env": {
+      "WIC_DATA_ORIGIN": "https://wic-auto-tools-2025-data.obk369369-spec.deno.net"
+    }
   }
 }
