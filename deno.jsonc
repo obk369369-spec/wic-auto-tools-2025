@@ -1,12 +1,5 @@
 {
-  "tasks": {
-    "start": "deno run -A --no-check main.ts"
-  },
-  "deploy": {
-    "project": "wic-auto-tools-2025",
-    "entrypoint": "main.ts",
-    "env": {
-      "WIC_DATA_ORIGIN": "https://wic-auto-tools-2025-data.obk369369-spec.deno.net"
-    }
+  "env": {
+    "WIC_DATA_ORIGIN": "https://wic-auto-tools-2025.obk369369-spec.deno.net/export"
   }
 }
