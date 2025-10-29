@@ -1,26 +1,21 @@
 {
-  "$schema": "https://deno.land/x/deno@v1.37.1/schema.json",
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.ns"],
+    "strict": true
+  },
   "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --unstable main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read --allow-write main.ts",
-    "start": "deno run --allow-all main.ts"
+    "dev": "deno run --allow-net --allow-env --allow-read main.ts",
+    "build": "deno compile --allow-net --allow-env --allow-read main.ts"
   },
   "imports": {
-    "oak": "https://deno.land/x/oak@v12.6.1/mod.ts",
-    "dotenv": "https://deno.land/x/dotenv@v3.2.2/mod.ts"
+    "@/": "./src/"
   },
   "env": {
-    "WIC_ENV": "production",
-    "WIC_DATA_ORIGIN": "https://wic-auto-tools-2025.obk369369-spec.deno.net/data",
-    "WIC_REPORT_MODE": "auto",
-    "WIC_SYNC_INTERVAL": "1800", // 초 단위, 30분마다 보고
+    "TZ": "Asia/Seoul",
+    "WIC_DATA_ORIGIN": "https://wic-auto-tools-2025.obk369369-spec.deno.net/export",
+    "WIC_REPORT_INTERVAL": "60m",
     "WIC_SELF_HEAL": "true",
-    "WIC_BACKUP_PATH": "/data/backups",
-    "WIC_REPORT_CHANNEL": "/report/live"
-  },
-  "fmt": {
-    "useTabs": false,
-    "lineWidth": 120,
-    "indentWidth": 2
+    "WIC_OBSERVER_MODE": "auto",
+    "WIC_SYNC_MODE": "propagate"
   }
 }
