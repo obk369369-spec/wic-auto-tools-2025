@@ -1,7 +1,5 @@
-// main.ts — ORIGIN 하드코딩 + 기본 라우트
-import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
-
-const ORIGIN = "https://wic-auto-tools-2025.obk369369-spec.deno.net/export"; // 하드코딩
+// main.ts — Deno.serve 기반(Deploy 호환) + ORIGIN 하드코드
+const ORIGIN = "https://wic-auto-tools-2025.obk369369-spec.deno.net/export";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -17,33 +15,21 @@ async function fetchLatest() {
   return await res.json();
 }
 
-serve(async (req) => {
-  const url = new URL(req.url);
-  const p = url.pathname;
+Deno.serve(async (req: Request) => {
+  const { pathname } = new URL(req.url);
 
-  if (p === "/ops/health") {
+  if (pathname === "/ops/health") {
     return json({ ok: true, tz: "Asia/Seoul", origin: ORIGIN, iso: new Date().toISOString() });
   }
+  if (pathname === "/ops/bootstrap") return json({ ok: true, step: "bootstrap" });
+  if (pathname === "/ops/update") return json({ ok: true, step: "update" });
 
-  if (p === "/ops/bootstrap") {
-    // 부트스트랩 훅(필요 시 초기화 로직 추가)
-    return json({ ok: true, step: "bootstrap" });
-  }
-
-  if (p === "/ops/update") {
-    // 업데이트 훅(필요 시 동기화 로직 추가)
-    return json({ ok: true, step: "update" });
-  }
-
-  if (p === "/report/live") {
+  if (pathname === "/report/live") {
     try {
-      const latest = await fetchLatest(); // ORIGIN/latest.json → 캐시/스냅샷
-      // compact table 변환
+      const latest = await fetchLatest(); // ORIGIN/latest.json
       const rows = Array.isArray(latest?.rows) ? latest.rows : [];
-      const stalled = false;
-      return json({ ok: true, stalled, rows, meta: { source: `${ORIGIN}/latest.json` } });
+      return json({ ok: true, stalled: false, rows, meta: { source: `${ORIGIN}/latest.json` } });
     } catch (e) {
-      // fallback 스냅샷
       const rows = [
         { tool: "주문자동동기화", status: "ready", uis: 0.92 },
         { tool: "고객후속관리", status: "ready", uis: 0.90 },
@@ -53,7 +39,7 @@ serve(async (req) => {
     }
   }
 
-  if (p === "/portal/launcher") {
+  if (pathname === "/portal/launcher") {
     const html = `<!doctype html><meta charset="utf-8">
 <title>WIC Launcher</title>
 <style>body{font:14px/1.4 system-ui;margin:24px} a{display:block;margin:8px 0}</style>
