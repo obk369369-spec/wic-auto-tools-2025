@@ -1,21 +1,11 @@
 {
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write main.ts",
+    "start": "deno run --allow-all main.ts"
+  },
   "compilerOptions": {
     "lib": ["deno.window", "deno.ns"],
     "strict": true
   },
-  "tasks": {
-    "dev": "deno run --allow-net --allow-env --allow-read main.ts",
-    "build": "deno compile --allow-net --allow-env --allow-read main.ts"
-  },
-  "imports": {
-    "@/": "./src/"
-  },
-  "env": {
-    "TZ": "Asia/Seoul",
-    "WIC_DATA_ORIGIN": "https://wic-auto-tools-2025.obk369369-spec.deno.net/export",
-    "WIC_REPORT_INTERVAL": "60m",
-    "WIC_SELF_HEAL": "true",
-    "WIC_OBSERVER_MODE": "auto",
-    "WIC_SYNC_MODE": "propagate"
-  }
+  "fmt": { "useTabs": false, "lineWidth": 120, "indentWidth": 2 }
 }
