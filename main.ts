@@ -25,15 +25,15 @@ router.get("/report/live", async (ctx) => {
   ctx.response.body = data;
 });
 
-// 🔸 정적 파일 경로 (새 추가)
-router.get(/^\/deliverables\/(.+)$/, (ctx) =>
-  ctx.response = await serveFile(ctx.request, `./static/deliverables/${ctx.params[0]}`)
-);
-router.get(/^\/apps\/(.+)$/, (ctx) =>
-  ctx.response = await serveFile(ctx.request, `./static/apps/${ctx.params[0]}`)
-);
+// ✅ 여기 수정: async 추가
+router.get(/^\/deliverables\/(.+)$/, async (ctx) => {
+  ctx.response = await serveFile(ctx.request, `./static/deliverables/${ctx.params[0]}`);
+});
+router.get(/^\/apps\/(.+)$/, async (ctx) => {
+  ctx.response = await serveFile(ctx.request, `./static/apps/${ctx.params[0]}`);
+});
 
-// 런처
+// 런처 화면
 router.get("/portal/launcher", (ctx) => {
   ctx.response.headers.set("Content-Type", "text/html; charset=utf-8");
   ctx.response.body = `
@@ -51,4 +51,5 @@ router.get("/portal/launcher", (ctx) => {
   `;
 });
 
-serve(router.routes());
+// ✅ 서버 시작 (oak이 아닌 기본 serve 사용)
+serve((req) => router.handle(req));
