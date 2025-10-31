@@ -1,19 +1,9 @@
-{
-  "generated_at": "2025-10-23T07:00:00+09:00",
-  "tools": [
-    {
-      "name_kr": "메타데이터 입력기",
-      "progress_pct": 92,
-      "eta_min": 8,
-      "status": "running",
-      "self_heal": true,
-      "links": {
-        "progress": "https://.../ops/progress?tool=meta",
-        "eta": "https://.../ops/eta?tool=meta",
-        "logs": "https://.../ops/logs#meta",
-        "health": "https://.../ops/health"
-      }
-    }
-  ],
-  "summary": { "active": 1, "standby": 0, "blocked": 0, "avg_progress": 92.0 }
-}
+{"ok":true,"generated_at":"2025-10-31T01:53:00Z","rows":[
+{"tool":"주문자동동기화","status":"ready","uis":0.93,"last_update":"2025-10-31T01:53:00Z"},
+{"tool":"고객후속관리","status":"ready","uis":0.91,"last_update":"2025-10-31T01:52:00Z"},
+{"tool":"보고서자동생성","status":"ready","uis":0.89,"last_update":"2025-10-31T01:51:30Z"},
+{"tool":"서브홈페이지생성기","status":"ready","uis":0.90,"last_update":"2025-10-31T01:51:00Z"}
+],"group_summaries":[
+{"group":"배포","progress":1.0,"status":"ok"},
+{"group":"보고","progress":0.95,"status":"warming"}
+],"meta":{"source":"export/latest.json","note":"seed snapshot for /report/live"}}
