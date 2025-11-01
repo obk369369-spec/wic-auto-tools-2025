@@ -1,20 +1,10 @@
 {
   "ok": true,
-  "generated_at": "2025-10-31T03:00:00Z",
   "rows": [
     { "tool": "주문자동동기화", "status": "ready", "uis": 0.93 },
     { "tool": "고객후속관리", "status": "ready", "uis": 0.91 },
     { "tool": "보고서자동생성", "status": "ready", "uis": 0.89 },
-    { "tool": "서브홈페이지생성기", "status": "ready", "uis": 0.9 }
+    { "tool": "서브홈페이지생성기", "status": "ready", "uis": 0.90 }
   ],
-  "deliverables": [
-    { "name": "고객 안내서", "file": "/static/deliverables/guide.html" },
-    { "name": "견적서", "file": "/static/deliverables/quote.html" },
-    { "name": "사장님 보고서 3종 세트", "file": "/static/deliverables/executive-3pack.html" },
-    { "name": "서브홈페이지 샘플", "file": "/static/apps/subsite/index.html" }
-  ],
-  "meta": {
-    "source": "/export/latest.json",
-    "note": "seed snapshot for /report/live"
-  }
+  "meta": { "note": "seed for /report/live" }
 }
