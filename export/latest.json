@@ -2,9 +2,15 @@
   "ok": true,
   "rows": [
     { "tool": "주문자동동기화", "status": "ready", "uis": 0.93 },
-    { "tool": "고객후속관리", "status": "ready", "uis": 0.91 },
+    { "tool": "고객후속관리",   "status": "ready", "uis": 0.91 },
     { "tool": "보고서자동생성", "status": "ready", "uis": 0.89 },
     { "tool": "서브홈페이지생성기", "status": "ready", "uis": 0.90 }
   ],
-  "meta": { "note": "seed for /report/live" }
+  "apps": [
+    { "name": "고객 안내서", "slug": "guide",  "kind": "guide" },
+    { "name": "견적서",     "slug": "quote",  "kind": "quote" },
+    { "name": "사장님 보고서 3종", "slug": "exec3", "kind": "report" },
+    { "name": "서브홈 미리보기", "slug": "subsite", "kind": "subsite" }
+  ],
+  "meta": { "note": "seed for /report/live & /portal/launcher" }
 }
